@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>품번 매칭 조회</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+/* ===================== 설정 =====================
+   Supabase > Project Settings > API 에서 복사해 아래 두 값을 바꾸세요.
+   바꾸기 전에는 예시 데이터로 동작하는 데모 모드입니다. */
+var CFG = {
+  url: "https://iikkadzumopjswhzkwqw.supabase.co
+",
+  key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlpa2thZHp1bW9wanN3aHprd3F3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2Njk1NDQsImV4cCI6MjEwNTI0NTU0NH0.WS1hNsYhPWWIOhsdodcy1wpMK08rF2X15WeTTluOygY"
+};
+</script>
+<style>
+:root{
+  --bg:#eceeea; --surface:#fbfcfa; --sunk:#e3e6e1; --ink:#18212b; --muted:#5a6772; --line:#cfd5ce;
+  --accent:#0b5cad; --accent-ink:#ffffff; --accent-soft:#dbe9f7;
+  --p1-bg:#fae6c8; --p1-ink:#7a4100; --p2-bg:#d2ede6; --p2-ink:#075a50;
+  --ok:#1b7440; --ok-bg:#dcf0e2; --bad:#b3261e; --bad-bg:#f8dedb;
+  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme:dark;
+    --bg:#11161b; --surface:#1a2128; --sunk:#232c35; --ink:#e7ecef; --muted:#9aa7b1; --line:#303b46;
+    --accent:#74b4f6; --accent-ink:#0a1520; --accent-soft:#1d3349;
+    --p1-bg:#4a3310; --p1-ink:#f6cf8e; --p2-bg:#113f39; --p2-ink:#93dccf;
+    --ok:#7fd49c; --ok-bg:#173825; --bad:#f29a93; --bad-bg:#472220;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:980px;margin:0 auto;padding:16px 16px 48px;display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;justify-content:space-between}
+h1{font-size:20px;font-weight:700;margin:0;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:13px}
+nav{display:flex;gap:4px;background:var(--sunk);padding:4px;border-radius:10px}
+nav a,.lang button{font:inherit;font-weight:600;font-size:14px;padding:7px 14px;border-radius:7px;border:0;background:transparent;color:var(--muted);text-decoration:none;cursor:pointer}
+nav a.on,.lang button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.lang{display:flex;gap:2px;background:var(--sunk);padding:4px;border-radius:10px}
+.lang button{padding:7px 10px;font-size:13px}
+.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.banner{font-size:13px;color:var(--muted);border:1px dashed var(--line);border-radius:8px;padding:8px 12px}
+.sync{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px;color:var(--muted)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.col{display:flex;flex-direction:column;gap:16px}
+.scanrow{display:flex;gap:8px;flex-wrap:wrap}
+.scanrow input[type=text]{flex:1 1 260px;min-width:0;font-family:var(--f-mono);font-size:19px;font-weight:500;padding:13px 14px;border-radius:9px;border:2px solid var(--accent);background:var(--bg);color:var(--ink)}
+input,select,button{font-family:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn{font-weight:600;font-size:14px;padding:10px 16px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;white-space:nowrap}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.small{padding:5px 10px;font-size:13px;border-radius:7px}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn:disabled{opacity:.5;cursor:default}
+.hint{font-size:13px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chip{font-size:13px;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+#cam video{width:100%;max-height:50vh;border-radius:10px;background:#000}
+.result{display:flex;flex-direction:column;gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.how{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px;color:var(--muted)}
+.tag{font-size:12px;font-weight:600;padding:3px 8px;border-radius:6px;background:var(--sunk);color:var(--ink)}
+.tag.ok{background:var(--ok-bg);color:var(--ok)}
+.tag.bad{background:var(--bad-bg);color:var(--bad)}
+.pair{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:stretch}
+.pn{border-radius:10px;padding:12px 14px;background:var(--sunk);display:flex;flex-direction:column;gap:4px;min-width:0}
+.pn.answer{background:var(--accent);color:var(--accent-ink)}
+.pn .lbl{font-size:12px;font-weight:600;opacity:.85;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.pn .val{font-family:var(--f-mono);font-size:clamp(20px,4.6vw,30px);font-weight:600;overflow-wrap:anywhere;line-height:1.2}
+.pn button{align-self:flex-start;font-size:12px;font-weight:600;padding:3px 8px;border-radius:6px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;opacity:.9}
+.arrow{align-self:center;font-size:22px;color:var(--muted)}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.meta div{display:flex;flex-direction:column;gap:2px}
+.k{font-size:12px;color:var(--muted);font-weight:600}
+.meta .v{font-size:16px;font-weight:600}
+.plant{display:inline-block;font-size:13px;font-weight:700;padding:3px 10px;border-radius:999px;margin-right:4px}
+.plant.p1{background:var(--p1-bg);color:var(--p1-ink)}
+.plant.p2{background:var(--p2-bg);color:var(--p2-ink)}
+.empty{border:2px solid var(--bad);background:var(--bad-bg);color:var(--bad);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.empty b{font-family:var(--f-mono);overflow-wrap:anywhere}
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:12px;color:var(--muted);font-weight:600;background:var(--sunk)}
+tr:last-child td{border-bottom:0}
+td.mono{font-family:var(--f-mono);font-weight:500;font-variant-numeric:tabular-nums}
+tr.pick{cursor:pointer}
+tr.pick:hover td{background:var(--accent-soft)}
+h2{font-size:14px;font-weight:700;margin:0;color:var(--muted)}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.bar input[type=text],.bar input[type=password]{flex:1 1 160px;min-width:0;padding:9px 12px;border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:14px}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;align-items:end}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--muted)}
+.form input[type=text]{padding:9px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:14px}
+.checks{display:flex;flex-wrap:wrap;gap:14px;font-size:14px;color:var(--ink);font-weight:500;padding:8px 0}
+.msg{font-size:13px;font-weight:600}
+.msg.bad{color:var(--bad)} .msg.ok{color:var(--ok)}
+[hidden]{display:none!important}
+@media (max-width:560px){
+  .pair{grid-template-columns:1fr}
+  .arrow{transform:rotate(90deg);justify-self:center}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1 data-i="title"></h1>
+      <div class="sub" data-i="subtitle"></div>
+    </div>
+    <div class="tools">
+      <nav>
+        <a href="#lookup" id="tab-lookup" data-i="tabLookup"></a>
+        <a href="#master" id="tab-master" data-i="tabMaster"></a>
+      </nav>
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" id="lang-ko">한국어</button>
+        <button type="button" id="lang-es">Español</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="banner" id="demo-banner" data-i="demoBanner" hidden></div>
+  <div class="sync">
+    <span id="sync-text"></span>
+    <button class="btn small" type="button" id="btn-refresh" data-i="btnRefresh"></button>
+  </div>
+
+  <!-- 조회 -->
+  <section id="view-lookup" class="col">
+    <form class="panel" id="scan-form" autocomplete="off">
+      <div class="scanrow">
+        <input type="text" id="q" autocapitalize="characters" spellcheck="false" aria-label="scan">
+        <button class="btn primary" type="submit" data-i="btnLookup"></button>
+        <button class="btn" type="button" id="btn-cam" data-i="btnCam"></button>
+        <label class="btn" for="photo" data-i="btnPhoto"></label>
+        <input type="file" id="photo" accept="image/*" capture="environment" hidden>
+      </div>
+      <div class="hint" data-i="scanHint"></div>
+      <div class="chips" id="sample-row" hidden>
+        <span class="k" data-i="tryLabel"></span>
+        <span id="samples" class="chips"></span>
+      </div>
+      <div id="cam" hidden class="col" style="gap:8px">
+        <video id="video" playsinline muted></video>
+        <div><button class="btn small" type="button" id="cam-stop" data-i="btnCamStop"></button></div>
+      </div>
+      <div class="msg bad" id="scan-msg" hidden></div>
+    </form>
+
+    <div class="result" id="result"></div>
+
+    <div class="panel">
+      <h2 data-i="history"></h2>
+      <div class="tblwrap"><table id="hist"></table></div>
+    </div>
+  </section>
+
+  <!-- 마스터 -->
+  <section id="view-master" class="col" hidden>
+    <form class="panel" id="lock-form" autocomplete="off">
+      <h2 data-i="lockTitle"></h2>
+      <div class="bar">
+        <input type="password" id="pin" inputmode="numeric" autocomplete="off" aria-label="PIN">
+        <button class="btn primary" type="submit" data-i="btnUnlock"></button>
+      </div>
+      <div class="hint" data-i="lockHint"></div>
+      <div class="msg bad" id="lock-msg" hidden></div>
+    </form>
+
+    <div class="panel" id="admin-panel" hidden>
+      <div class="bar">
+        <label class="btn primary" for="xlsx" data-i="btnUpload"></label>
+        <input type="file" id="xlsx" accept=".xlsx,.xls,.csv" hidden>
+        <button class="btn" type="button" id="btn-add" data-i="btnAdd"></button>
+        <button class="btn" type="button" id="btn-template" data-i="btnTemplate"></button>
+        <button class="btn" type="button" id="btn-export" data-i="btnExport"></button>
+        <button class="btn" type="button" id="btn-lock" data-i="btnLock"></button>
+      </div>
+      <div class="hint" data-i="uploadHint"></div>
+      <div id="import-bar" hidden class="col" style="gap:8px">
+        <span class="msg ok" id="import-msg"></span>
+        <div class="checks">
+          <label><input type="radio" name="imode" id="imode-merge" checked> <span data-i="modeMerge"></span></label>
+          <label><input type="radio" name="imode" id="imode-replace"> <span data-i="modeReplace"></span></label>
+        </div>
+        <div class="bar">
+          <button class="btn primary small" type="button" id="import-apply" data-i="btnApply"></button>
+          <button class="btn small" type="button" id="import-cancel" data-i="btnCancel"></button>
+        </div>
+      </div>
+      <form class="bar" id="pin-form" autocomplete="off">
+        <input type="password" id="newpin" inputmode="numeric" autocomplete="off" aria-label="new PIN">
+        <button class="btn small" type="submit" data-i="btnPin"></button>
+      </form>
+      <div class="msg" id="master-msg" hidden></div>
+    </div>
+
+    <form class="panel" id="edit-form" hidden autocomplete="off">
+      <h2 id="edit-title"></h2>
+      <div class="form">
+        <label><span data-i="colNifco"></span><input type="text" id="f-nifco"></label>
+        <label><span data-i="colCust"></span><input type="text" id="f-cust"></label>
+        <label><span data-i="colModel"></span><input type="text" id="f-model"></label>
+        <label><span data-i="colName"></span><input type="text" id="f-name"></label>
+        <div>
+          <div class="k" data-i="colPlant"></div>
+          <div class="checks">
+            <label><input type="checkbox" id="f-p1"> <span data-i="plant1"></span></label>
+            <label><input type="checkbox" id="f-p2"> <span data-i="plant2"></span></label>
+          </div>
+        </div>
+      </div>
+      <div class="bar">
+        <button class="btn primary" type="submit" data-i="btnSave"></button>
+        <button class="btn" type="button" id="edit-cancel" data-i="btnCancel"></button>
+        <span class="msg bad" id="edit-msg"></span>
+      </div>
+    </form>
+
+    <div class="bar"><input type="text" id="mfilter" aria-label="filter" style="background:var(--surface)"></div>
+    <div class="hint" id="mcount"></div>
+    <div class="tblwrap"><table id="mtable"></table></div>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+<script>
+"use strict";
+/* ---------- 문구 ---------- */
+var T = {
+ ko:{title:"품번 매칭 조회", subtitle:"고객사 품번 ↔ NIFCO 내부 품번", tabLookup:"조회", tabMaster:"마스터 관리",
+  demoBanner:"데모 모드입니다. index.html 상단의 CFG에 Supabase 주소와 키를 넣기 전까지는 예시 데이터로 동작하며, 수정 내용은 이 브라우저에만 저장됩니다. 데모 PIN은 0000입니다.",
+  placeholder:"스캔하거나 품번을 입력하세요", btnLookup:"조회", btnCam:"카메라 스캔", btnCamStop:"카메라 닫기", btnPhoto:"사진으로 스캔",
+  scanHint:"스캐너·PDA는 이 칸에 커서를 두고 바로 스캔하면 됩니다. 품번 일부만 입력해도 검색됩니다.",
+  tryLabel:"예시로 테스트", history:"최근 조회", btnRefresh:"마스터 새로고침",
+  syncOk:function(n,tm){return "마스터 "+n+"건 · "+tm+" 동기화";}, syncLoading:"마스터 불러오는 중…",
+  syncCache:function(n){return "서버에 연결하지 못해 저장된 마스터 "+n+"건으로 조회합니다.";}, syncDemo:function(n){return "예시 마스터 "+n+"건";},
+  sProduct:"제품 QR", sBox:"박스라벨 QR", sCust:"고객사 품번", sEs:"스페인어 자판 스캔", sPart:"부분 검색", sNone:"미등록 품번",
+  kindProduct:"제품 QR", kindLabel:"박스·폴리백 라벨 QR", kindManual:"품번 입력", kindPartial:"부분 검색", kindBarcode:"바코드",
+  colNifco:"내부 품번 (NIFCO)", colCust:"고객사 품번", colModel:"차종", colName:"품명", colPlant:"양산처",
+  plant1:"1공장", plant2:"2공장", input:"입력값", answer:"매칭 결과", copy:"복사", copied:"복사됨",
+  pairOk:"라벨의 두 품번이 마스터와 일치", pairBad:"라벨의 고객사 품번이 마스터와 다름", labelSays:"라벨 표기",
+  lot:"LOT", qty:"수량", color:"색상", line:"라인", fixed:"자판 치환 보정됨",
+  notFound:"마스터에 없는 품번입니다", readAs:"읽은 값", multi:"건이 검색되었습니다. 행을 누르면 상세가 열립니다.",
+  several:"건이 같은 품번에 연결되어 있습니다.",
+  hTime:"시각", hKind:"방식", hInput:"입력", hResult:"결과", hNone:"미등록", hEmpty:"아직 조회 내역이 없습니다.",
+  lockTitle:"마스터 수정은 관리자 PIN이 필요합니다", btnUnlock:"잠금 해제", lockHint:"조회와 마스터 열람은 PIN 없이 가능합니다.", pinPh:"관리자 PIN",
+  errPin:"PIN이 맞지 않습니다.", errNet:"서버에 연결하지 못했습니다. 네트워크를 확인하고 다시 시도해 주세요.",
+  filterPh:"마스터 검색 (품번·차종·품명)", btnUpload:"엑셀 업로드", btnAdd:"행 추가", btnTemplate:"엑셀 양식 받기", btnExport:"마스터 내려받기", btnLock:"잠그기",
+  uploadHint:"엑셀 첫 행에 내부품번 · 고객사품번 · 차종 · 품명 · 양산처 열이 있으면 자동으로 인식합니다.",
+  modeMerge:"추가·갱신 (기존 마스터 유지)", modeReplace:"전체 교체 (기존 마스터를 지우고 이 파일로 대체)",
+  btnApply:"적용", btnCancel:"취소", btnSave:"저장", edit:"수정", del:"삭제", delSure:"삭제 확인", addTitle:"새 품번 등록", editTitle:"품번 수정",
+  newPinPh:"새 PIN (4자리 이상)", btnPin:"PIN 변경", pinDone:"PIN을 변경했습니다.", pinShort:"PIN은 4자리 이상이어야 합니다.",
+  errRequired:"내부 품번과 고객사 품번은 꼭 입력해야 합니다.", errDup:"같은 내부 품번·고객사 품번 조합이 이미 있습니다.",
+  importMsg:function(n,u,s){return "신규 "+n+"건, 갱신 "+u+"건"+(s?" (품번 없는 행 "+s+"건 제외)":"");},
+  importNone:"읽을 수 있는 행이 없습니다. 열 이름을 확인해 주세요.", importDone:"마스터에 반영했습니다.", saving:"저장 중…",
+  count:function(a,b){return "전체 "+b+"건 중 "+a+"건 표시";}, more:function(n){return " (처음 "+n+"건만 표시, 검색으로 좁혀 주세요)";},
+  photoFail:"사진에서 코드를 읽지 못했습니다. 라벨을 더 가까이, 밝게 찍어 다시 시도해 주세요.", photoWork:"사진 판독 중…",
+  camFail:"카메라를 열지 못했습니다. 브라우저의 카메라 권한을 허용하거나 사진으로 스캔을 이용해 주세요."},
+ es:{title:"Consulta de números de parte", subtitle:"N.º de parte del cliente ↔ N.º de parte NIFCO", tabLookup:"Consulta", tabMaster:"Maestro",
+  demoBanner:"Modo demo. Hasta que se configure Supabase en CFG (index.html), funciona con datos de ejemplo y los cambios se guardan solo en este navegador. PIN de demo: 0000.",
+  placeholder:"Escanee o escriba el número de parte", btnLookup:"Buscar", btnCam:"Escanear con cámara", btnCamStop:"Cerrar cámara", btnPhoto:"Escanear con foto",
+  scanHint:"Con escáner o PDA, coloque el cursor aquí y escanee. También puede escribir solo una parte del número.",
+  tryLabel:"Probar con ejemplos", history:"Consultas recientes", btnRefresh:"Actualizar maestro",
+  syncOk:function(n,tm){return "Maestro: "+n+" registros · sincronizado "+tm;}, syncLoading:"Cargando el maestro…",
+  syncCache:function(n){return "Sin conexión al servidor. Se usa el maestro guardado ("+n+" registros).";}, syncDemo:function(n){return "Maestro de ejemplo: "+n+" registros";},
+  sProduct:"QR de pieza", sBox:"QR de caja", sCust:"N.º del cliente", sEs:"Escaneo con teclado español", sPart:"Búsqueda parcial", sNone:"No registrado",
+  kindProduct:"QR de pieza", kindLabel:"QR de etiqueta de caja/bolsa", kindManual:"Número escrito", kindPartial:"Búsqueda parcial", kindBarcode:"Código de barras",
+  colNifco:"N.º de parte NIFCO", colCust:"N.º de parte del cliente", colModel:"Modelo", colName:"Descripción", colPlant:"Planta",
+  plant1:"Planta 1", plant2:"Planta 2", input:"Entrada", answer:"Resultado", copy:"Copiar", copied:"Copiado",
+  pairOk:"Los dos números de la etiqueta coinciden con el maestro", pairBad:"El número del cliente en la etiqueta no coincide con el maestro", labelSays:"En la etiqueta",
+  lot:"LOTE", qty:"Cantidad", color:"Color", line:"Línea", fixed:"Teclado corregido",
+  notFound:"Este número no está en el maestro", readAs:"Valor leído", multi:" resultados. Toque una fila para ver el detalle.",
+  several:" registros están ligados al mismo número.",
+  hTime:"Hora", hKind:"Método", hInput:"Entrada", hResult:"Resultado", hNone:"No registrado", hEmpty:"Aún no hay consultas.",
+  lockTitle:"Para modificar el maestro se necesita el PIN de administrador", btnUnlock:"Desbloquear", lockHint:"La consulta y la vista del maestro no requieren PIN.", pinPh:"PIN de administrador",
+  errPin:"PIN incorrecto.", errNet:"No se pudo conectar al servidor. Revise la red e intente de nuevo.",
+  filterPh:"Buscar en el maestro (número, modelo, descripción)", btnUpload:"Cargar Excel", btnAdd:"Agregar fila", btnTemplate:"Descargar formato", btnExport:"Descargar maestro", btnLock:"Bloquear",
+  uploadHint:"Si la primera fila tiene las columnas N.º NIFCO · N.º cliente · Modelo · Descripción · Planta, se reconocen automáticamente.",
+  modeMerge:"Agregar y actualizar (conserva el maestro actual)", modeReplace:"Reemplazar todo (borra el maestro actual y usa este archivo)",
+  btnApply:"Aplicar", btnCancel:"Cancelar", btnSave:"Guardar", edit:"Editar", del:"Borrar", delSure:"Confirmar", addTitle:"Nuevo número de parte", editTitle:"Editar número de parte",
+  newPinPh:"Nuevo PIN (mínimo 4 dígitos)", btnPin:"Cambiar PIN", pinDone:"PIN actualizado.", pinShort:"El PIN debe tener al menos 4 dígitos.",
+  errRequired:"El N.º NIFCO y el N.º del cliente son obligatorios.", errDup:"Esa combinación de N.º NIFCO y N.º del cliente ya existe.",
+  importMsg:function(n,u,s){return n+" nuevos, "+u+" actualizados"+(s?" ("+s+" filas sin número omitidas)":"");},
+  importNone:"No se encontraron filas válidas. Revise los nombres de las columnas.", importDone:"Maestro actualizado.", saving:"Guardando…",
+  count:function(a,b){return a+" de "+b+" registros";}, more:function(n){return " (solo los primeros "+n+"; use la búsqueda)";},
+  photoFail:"No se pudo leer el código en la foto. Acérquese más a la etiqueta e intente de nuevo.", photoWork:"Leyendo la foto…",
+  camFail:"No se pudo abrir la cámara. Permita el acceso a la cámara o use la opción de foto."}
+};
+var lang = "ko";
+function t(k){ return T[lang][k]; }
+var $ = function(id){ return document.getElementById(id); };
+
+/* ---------- 저장소 (Supabase / 데모) ---------- */
+var LIVE = CFG.url.indexOf("YOUR-PROJECT")<0 && CFG.key.indexOf("YOUR-")<0;
+var SAMPLE = [
+ {id:1, nifco:"BR02DA00104", cust:"865A7-R5JA0", model:"NQ5a PE", name:"BUMPER BRACKET FR LH", plant:"2"},
+ {id:2, nifco:"BR02DA00204", cust:"865B7-R5JA0", model:"NQ5a PE", name:"BUMPER BRACKET FR RH", plant:"2"},
+ {id:3, nifco:"CF2RTA00101", cust:"86590-P2000", model:"ME1a",    name:"COVER ASSY",            plant:"1"},
+ {id:4, nifco:"SH11LA00302", cust:"86565-P1500", model:"NQ5a PE", name:"SHROUD LWR",            plant:"1,2"},
+ {id:5, nifco:"GR05NA00110", cust:"84780-T1X00", model:"NX5A",    name:"GARNISH ASSY CTR",      plant:"2"},
+ {id:6, nifco:"KN03PA00105", cust:"84655-N9100", model:"NX4",     name:"KNOB ASSY",             plant:"1"}
+];
+var CACHE = LIVE ? "pnmatch.cache.v1" : "pnmatch.demo.v1";
+var master = [];
+var syncState = {mode:"loading", time:""};
+
+function ls(k, v){ try{ if(v===undefined) return localStorage.getItem(k); localStorage.setItem(k, v); }catch(e){} return null; }
+function api(path, opt){
+  opt = opt || {};
+  var h = {apikey:CFG.key, Authorization:"Bearer "+CFG.key, "Content-Type":"application/json"};
+  if(opt.headers) Object.assign(h, opt.headers);
+  return fetch(CFG.url.replace(/\/+$/,"")+"/rest/v1/"+path, {method:opt.method||"GET", headers:h, body:opt.body?JSON.stringify(opt.body):undefined})
+    .catch(function(){ throw new Error("NET"); })
+    .then(function(r){
+      if(r.ok) return r.text().then(function(x){ return x ? JSON.parse(x) : null; });
+      return r.text().then(function(x){ var m = ""; try{ m = JSON.parse(x).message || ""; }catch(e){} throw new Error(m || ("HTTP "+r.status)); });
+    });
+}
+function rpc(name, body){ return api("rpc/"+name, {method:"POST", body:body}); }
+function fetchAll(){
+  var all = [], size = 1000;
+  function page(from){
+    return api("pn_master?select=id,nifco,cust,model,name,plant&order=nifco.asc,id.asc", {headers:{"Range-Unit":"items", Range:from+"-"+(from+size-1)}})
+      .then(function(rows){ all = all.concat(rows||[]); return rows && rows.length===size ? page(from+size) : all; });
+  }
+  return page(0);
+}
+var demoPin = function(){ return ls("pnmatch.demo.pin") || "0000"; };
+function demoSave(){ ls(CACHE, JSON.stringify(master)); }
+function demoGuard(pin){ return pin===demoPin() ? Promise.resolve() : Promise.reject(new Error("PIN")); }
+var store = LIVE ? {
+  load:function(){ return fetchAll(); },
+  check:function(pin){ return rpc("pn_check_pin", {p_pin:pin}); },
+  save:function(pin, rows, replace){ return rpc("pn_save", {p_pin:pin, p_rows:rows, p_replace:!!replace}); },
+  update:function(pin, id, row){ return rpc("pn_update", {p_pin:pin, p_id:id, p_row:row}); },
+  remove:function(pin, id){ return rpc("pn_delete", {p_pin:pin, p_id:id}); },
+  setPin:function(pin, np){ return rpc("pn_set_pin", {p_pin:pin, p_new:np}); }
+} : {
+  load:function(){ var a = null; try{ a = JSON.parse(ls(CACHE)); }catch(e){} return Promise.resolve(Array.isArray(a) ? a : SAMPLE.map(function(r){ return Object.assign({}, r); })); },
+  check:function(pin){ return Promise.resolve(pin===demoPin()); },
+  save:function(pin, rows, replace){ return demoGuard(pin).then(function(){
+    if(replace) master = [];
+    rows.forEach(function(r){
+      var i = master.findIndex(function(x){ return key(x.nifco)===key(r.nifco) && key(x.cust)===key(r.cust); });
+      if(i>=0) master[i] = Object.assign({id:master[i].id}, r); else master.push(Object.assign({id:Date.now()+Math.random()}, r));
+    }); demoSave(); }); },
+  update:function(pin, id, row){ return demoGuard(pin).then(function(){ var i = master.findIndex(function(x){ return x.id===id; }); if(i>=0) master[i] = Object.assign({id:id}, row); demoSave(); }); },
+  remove:function(pin, id){ return demoGuard(pin).then(function(){ master = master.filter(function(x){ return x.id!==id; }); demoSave(); }); },
+  setPin:function(pin, np){ return demoGuard(pin).then(function(){ ls("pnmatch.demo.pin", np); }); }
+};
+function nowHM(){ var d = new Date(); return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2); }
+function renderSync(){
+  var s = syncState, n = master.length, txt;
+  if(s.mode==="loading") txt = t("syncLoading");
+  else if(s.mode==="demo") txt = t("syncDemo")(n);
+  else if(s.mode==="cache") txt = t("syncCache")(n);
+  else txt = t("syncOk")(n, s.time);
+  $("sync-text").textContent = txt;
+}
+function reload(){
+  syncState = {mode:"loading"}; renderSync();
+  return store.load().then(function(rows){
+    master = rows; syncState = {mode: LIVE ? "ok" : "demo", time: nowHM()};
+    if(LIVE) ls(CACHE, JSON.stringify(rows));
+  }).catch(function(){
+    var a = null; try{ a = JSON.parse(ls(CACHE)); }catch(e){}
+    master = Array.isArray(a) ? a : []; syncState = {mode:"cache"};
+  }).then(function(){ renderSync(); renderMaster(); if(last!=null) renderResult(resolve(last)); });
+}
+function errText(e){ var m = String(e && e.message || ""); if(m.indexOf("PIN_SHORT")>=0) return t("pinShort"); if(m==="PIN" || m.indexOf("PIN")===0) return t("errPin"); if(m==="NET") return t("errNet"); return m || t("errNet"); }
+
+/* ---------- 판독 로직 ---------- */
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+function key(s){ return String(s==null?"":s).toUpperCase().replace(/[\s\-_.\/]/g,""); }
+function byNifco(v){ var k=key(v); return master.filter(function(r){return key(r.nifco)===k;}); }
+function byCust(v){ var k=key(v); return master.filter(function(r){return key(r.cust)===k;}); }
+
+function resolve(raw){
+  var typed = String(raw||"").trim().toUpperCase();
+  if(!typed) return null;
+  // 스페인어 자판: 스캐너가 ^ 를 & 로, - 를 ' 로 입력하는 경우 보정
+  var src = typed.replace(/&/g,"^").replace(/'/g,"-");
+  var o = {raw:src, fixed:src!==typed, kind:"manual", by:null, fields:{}, matches:[], pair:null};
+
+  if(src.indexOf("^")>=0){
+    src.split("^").forEach(function(tok){
+      var m = tok.match(/^(I1|I2|L1|Q1|C5|H1)(.+)$/);
+      if(m) o.fields[m[1]] = m[2].trim();
+    });
+    if(o.fields.I1 || o.fields.I2){
+      o.kind = "label";
+      if(o.fields.I1){ o.matches = byNifco(o.fields.I1); o.by="nifco"; o.input=o.fields.I1; }
+      if(!o.matches.length && o.fields.I2){ o.matches = byCust(o.fields.I2); o.by="cust"; o.input=o.fields.I2; }
+      if(o.matches.length && o.fields.I1 && o.fields.I2){
+        o.pair = o.matches.some(function(r){ return key(r.nifco)===key(o.fields.I1) && key(r.cust)===key(o.fields.I2); });
+      }
+      if(!o.input) o.input = o.fields.I1 || o.fields.I2;
+      return o;
+    }
+  }
+  if(/^M8/.test(src) && byNifco(src.slice(2)).length){
+    o.kind="product"; o.by="nifco"; o.input=src.slice(2); o.matches=byNifco(o.input); return o;
+  }
+  o.input = src;
+  var m1 = byNifco(src); if(m1.length){ o.by="nifco"; o.matches=m1; return o; }
+  var m2 = byCust(src);  if(m2.length){ o.by="cust";  o.matches=m2; return o; }
+  // 긴 바코드 안에 품번이 들어 있는 경우
+  var k = key(src);
+  var inside = master.filter(function(r){ return key(r.nifco).length>=6 && k.indexOf(key(r.nifco))>=0; });
+  if(inside.length){ o.kind="barcode"; o.by="nifco"; o.matches=inside; return o; }
+  inside = master.filter(function(r){ return key(r.cust).length>=6 && k.indexOf(key(r.cust))>=0; });
+  if(inside.length){ o.kind="barcode"; o.by="cust"; o.matches=inside; return o; }
+  // 부분 검색
+  if(k.length>=2 && src.indexOf("^")<0){
+    var part = master.filter(function(r){ return key(r.nifco).indexOf(k)>=0 || key(r.cust).indexOf(k)>=0; });
+    if(part.length){ o.kind="partial"; o.matches=part.slice(0,100); return o; }
+  }
+  return o;
+}
+
+/* ---------- 조회 화면 ---------- */
+var history_ = [];
+var last = null;
+
+function plants(p){
+  var s = String(p||""), out = "";
+  if(s.indexOf("1")>=0) out += '<span class="plant p1">'+esc(t("plant1"))+'</span>';
+  if(s.indexOf("2")>=0) out += '<span class="plant p2">'+esc(t("plant2"))+'</span>';
+  return out || '<span class="hint">-</span>';
+}
+function kindName(k){ return t({product:"kindProduct",label:"kindLabel",manual:"kindManual",partial:"kindPartial",barcode:"kindBarcode"}[k]); }
+function pnBox(labelKey, value, isAnswer){
+  return '<div class="pn'+(isAnswer?' answer':'')+'">'
+    + '<div class="lbl"><span>'+esc(t(labelKey))+'</span><span>'+esc(t(isAnswer?"answer":"input"))+'</span></div>'
+    + '<div class="val">'+esc(value)+'</div>'
+    + '<button type="button" data-copy="'+esc(value)+'">'+esc(t("copy"))+'</button></div>';
+}
+function recordCard(r, o){
+  var by = o.by || "nifco";
+  var left  = by==="nifco" ? pnBox("colNifco", r.nifco, false) : pnBox("colCust", r.cust, false);
+  var right = by==="nifco" ? pnBox("colCust", r.cust, true)   : pnBox("colNifco", r.nifco, true);
+  var how = '<span class="tag">'+esc(kindName(o.kind))+'</span>';
+  if(o.fixed) how += '<span class="tag">'+esc(t("fixed"))+'</span>';
+  if(o.pair===true)  how += '<span class="tag ok">'+esc(t("pairOk"))+'</span>';
+  if(o.pair===false) how += '<span class="tag bad">'+esc(t("pairBad"))+' · '+esc(t("labelSays"))+' '+esc(o.fields.I2)+'</span>';
+  var f = o.fields, extra = "";
+  [["L1","lot"],["Q1","qty"],["C5","color"],["H1","line"]].forEach(function(p){
+    if(f[p[0]]) extra += '<div><span class="k">'+esc(t(p[1]))+'</span><span class="v">'+esc(f[p[0]])+'</span></div>';
+  });
+  return '<div class="card"><div class="how">'+how+'</div>'
+    + '<div class="pair">'+left+'<div class="arrow" aria-hidden="true">→</div>'+right+'</div>'
+    + '<div class="meta">'
+    + '<div><span class="k">'+esc(t("colModel"))+'</span><span class="v">'+esc(r.model||"-")+'</span></div>'
+    + '<div><span class="k">'+esc(t("colName"))+'</span><span class="v">'+esc(r.name||"-")+'</span></div>'
+    + '<div><span class="k">'+esc(t("colPlant"))+'</span><span class="v">'+plants(r.plant)+'</span></div>'
+    + extra + '</div></div>';
+}
+function rowsTable(list){
+  var h = '<div class="tblwrap"><table><tr><th>'+esc(t("colNifco"))+'</th><th>'+esc(t("colCust"))+'</th><th>'+esc(t("colModel"))+'</th><th>'+esc(t("colName"))+'</th><th>'+esc(t("colPlant"))+'</th></tr>';
+  list.forEach(function(r){
+    h += '<tr class="pick" tabindex="0" data-pick="'+esc(r.nifco)+'"><td class="mono">'+esc(r.nifco)+'</td><td class="mono">'+esc(r.cust)+'</td><td>'+esc(r.model)+'</td><td>'+esc(r.name)+'</td><td>'+plants(r.plant)+'</td></tr>';
+  });
+  return h+'</table></div>';
+}
+function renderResult(o){
+  var el = $("result");
+  if(!o){ el.innerHTML = ""; return; }
+  if(!o.matches.length){
+    el.innerHTML = '<div class="empty"><div><strong>'+esc(t("notFound"))+'</strong></div>'
+      + '<div>'+esc(t("readAs"))+': <b>'+esc(o.input||o.raw)+'</b></div></div>';
+    return;
+  }
+  if(o.kind==="partial"){
+    el.innerHTML = '<div class="hint"><span class="tag">'+esc(kindName("partial"))+'</span> '+o.matches.length+esc(t("multi"))+'</div>'+rowsTable(o.matches);
+    return;
+  }
+  var html = "";
+  if(o.matches.length>1) html += '<div class="hint">'+o.matches.length+esc(t("several"))+'</div>';
+  o.matches.forEach(function(r){ html += recordCard(r,o); });
+  el.innerHTML = html;
+}
+function renderHistory(){
+  var h = '<tr><th>'+esc(t("hTime"))+'</th><th>'+esc(t("hKind"))+'</th><th>'+esc(t("hInput"))+'</th><th>'+esc(t("hResult"))+'</th></tr>';
+  if(!history_.length) h += '<tr><td colspan="4" class="hint">'+esc(t("hEmpty"))+'</td></tr>';
+  history_.forEach(function(x,i){
+    var o = x.o, res;
+    if(!o.matches.length) res = '<span class="tag bad">'+esc(t("hNone"))+'</span>';
+    else if(o.kind==="partial") res = o.matches.length+"";
+    else res = esc(o.by==="cust" ? o.matches[0].nifco : o.matches[0].cust);
+    h += '<tr class="pick" tabindex="0" data-hist="'+i+'"><td>'+esc(x.time)+'</td><td>'+esc(kindName(o.kind))+'</td><td class="mono">'+esc(o.input||o.raw)+'</td><td class="mono">'+res+'</td></tr>';
+  });
+  $("hist").innerHTML = h;
+}
+function lookup(raw, record){
+  var o = resolve(raw);
+  last = o ? raw : null;
+  renderResult(o);
+  if(o && record){
+    var d = new Date();
+    history_.unshift({time:nowHM()+":"+("0"+d.getSeconds()).slice(-2), raw:raw, o:o});
+    if(history_.length>10) history_.pop();
+    renderHistory();
+  }
+}
+$("scan-form").addEventListener("submit", function(e){
+  e.preventDefault();
+  lookup($("q").value, true);
+  $("q").select();
+});
+var typing = null;
+$("q").addEventListener("input", function(){
+  clearTimeout(typing);
+  var v = $("q").value;
+  typing = setTimeout(function(){ if(v.indexOf("^")<0 && v.indexOf("&")<0) lookup(v, false); }, 180);
+});
+var SAMPLES = [
+ ["sProduct","M8BR02DA00104"],
+ ["sBox","55CAI^I1BR02DA00104^I2865A7-R5JA0^L1261116A^Q1120^C5NNB^H1M07"],
+ ["sCust","86565-P1500"],
+ ["sEs","55CAI&I1CF2RTA00101&I286590'P2000&L1261115B&Q160"],
+ ["sPart","865"],
+ ["sNone","M8ZZ99XA00001"]
+];
+function renderSamples(){
+  $("sample-row").hidden = LIVE;
+  $("samples").innerHTML = SAMPLES.map(function(s,i){ return '<button type="button" class="chip" data-sample="'+i+'">'+esc(t(s[0]))+'</button>'; }).join("");
+}
+document.addEventListener("click", function(e){
+  var b = e.target.closest("[data-sample],[data-copy],[data-pick],[data-hist],[data-edit],[data-del]");
+  if(!b) return;
+  if(b.dataset.sample!=null){ var v = SAMPLES[+b.dataset.sample][1]; $("q").value = v; lookup(v,true); $("q").focus(); $("q").select(); }
+  else if(b.dataset.copy!=null){
+    try{ navigator.clipboard.writeText(b.dataset.copy).then(function(){ b.textContent = t("copied"); setTimeout(function(){ b.textContent = t("copy"); },1200); }).catch(function(){}); }catch(err){}
+  }
+  else if(b.dataset.pick!=null){ $("q").value = b.dataset.pick; lookup(b.dataset.pick,true); }
+  else if(b.dataset.hist!=null){ var x = history_[+b.dataset.hist]; $("q").value = x.raw; lookup(x.raw,false); }
+  else if(b.dataset.edit!=null){ openEdit(findId(b.dataset.edit)); }
+  else if(b.dataset.del!=null){
+    if(b.dataset.armed){
+      b.disabled = true;
+      store.remove(pin, findId(b.dataset.del).id).then(reload).catch(function(err){ masterMsg(errText(err), true); b.disabled = false; });
+    } else { b.dataset.armed = "1"; b.textContent = t("delSure"); b.classList.add("danger"); }
+  }
+});
+document.addEventListener("keydown", function(e){
+  if(e.key==="Enter" && e.target.matches && e.target.matches("tr.pick")) e.target.click();
+});
+
+/* 카메라 / 사진 스캔 */
+var reader = null;
+function scanMsg(text, bad){ var m = $("scan-msg"); m.hidden = !text; m.className = "msg"+(bad?" bad":""); m.textContent = text||""; }
+function stopCam(){ if(reader){ try{ reader.reset(); }catch(e){} reader = null; } $("cam").hidden = true; }
+$("btn-cam").addEventListener("click", function(){
+  if(reader){ stopCam(); return; }
+  scanMsg("");
+  if(!window.ZXing || !navigator.mediaDevices){ scanMsg(t("camFail"), true); return; }
+  $("cam").hidden = false;
+  reader = new ZXing.BrowserMultiFormatReader();
+  reader.decodeFromConstraints({video:{facingMode:{ideal:"environment"}}}, "video", function(res){
+    if(res && reader){ var txt = res.getText(); stopCam(); $("q").value = txt; lookup(txt, true); }
+  }).catch(function(){ stopCam(); scanMsg(t("camFail"), true); });
+});
+$("cam-stop").addEventListener("click", stopCam);
+$("photo").addEventListener("change", function(){
+  var file = this.files && this.files[0]; this.value = "";
+  if(!file) return;
+  scanMsg(t("photoWork"));
+  decodeImage(file).then(function(text){ scanMsg(""); $("q").value = text; lookup(text,true); })
+    .catch(function(){ scanMsg(t("photoFail"), true); });
+});
+function decodeImage(file){
+  var url = URL.createObjectURL(file);
+  var native = ("BarcodeDetector" in window)
+    ? createImageBitmap(file).then(function(bmp){ return new window.BarcodeDetector().detect(bmp); })
+        .then(function(r){ if(r && r.length) return r[0].rawValue; throw new Error("none"); })
+    : Promise.reject(new Error("no detector"));
+  return native.catch(function(){
+    if(!window.ZXing) throw new Error("no reader");
+    return new ZXing.BrowserMultiFormatReader().decodeFromImageUrl(url).then(function(r){ return r.getText(); });
+  }).finally(function(){ setTimeout(function(){ URL.revokeObjectURL(url); }, 2000); });
+}
+
+/* ---------- 마스터 화면 ---------- */
+var pin = null, editing = null, pending = null, MAXROWS = 300;
+function findId(v){ return master.find(function(r){ return String(r.id)===String(v); }); }
+function masterMsg(text, bad){ var m = $("master-msg"); m.hidden = !text; m.className = "msg "+(bad?"bad":"ok"); m.textContent = text||""; }
+function renderLock(){
+  $("lock-form").hidden = !!pin; $("admin-panel").hidden = !pin;
+  if(!pin){ $("edit-form").hidden = true; }
+}
+function renderMaster(){
+  var f = key($("mfilter").value), shown = 0, total = 0;
+  var h = '<tr><th>'+esc(t("colNifco"))+'</th><th>'+esc(t("colCust"))+'</th><th>'+esc(t("colModel"))+'</th><th>'+esc(t("colName"))+'</th><th>'+esc(t("colPlant"))+'</th>'+(pin?'<th></th>':'')+'</tr>';
+  master.forEach(function(r){
+    if(f && key(r.nifco+r.cust+r.model+r.name).indexOf(f)<0) return;
+    total++;
+    if(shown>=MAXROWS) return;
+    shown++;
+    h += '<tr><td class="mono">'+esc(r.nifco)+'</td><td class="mono">'+esc(r.cust)+'</td><td>'+esc(r.model)+'</td><td>'+esc(r.name)+'</td><td>'+plants(r.plant)+'</td>'
+      + (pin ? '<td><button class="btn small" type="button" data-edit="'+esc(r.id)+'">'+esc(t("edit"))+'</button> <button class="btn small" type="button" data-del="'+esc(r.id)+'">'+esc(t("del"))+'</button></td>' : '')
+      + '</tr>';
+  });
+  $("mtable").innerHTML = h;
+  $("mcount").textContent = t("count")(total, master.length) + (total>shown ? t("more")(shown) : "");
+}
+$("mfilter").addEventListener("input", renderMaster);
+$("lock-form").addEventListener("submit", function(e){
+  e.preventDefault();
+  var v = $("pin").value, m = $("lock-msg"); m.hidden = true;
+  store.check(v).then(function(ok){
+    if(!ok){ m.hidden = false; m.textContent = t("errPin"); return; }
+    pin = v; $("pin").value = ""; renderLock(); renderMaster();
+  }).catch(function(err){ m.hidden = false; m.textContent = errText(err); });
+});
+$("btn-lock").addEventListener("click", function(){ pin = null; renderLock(); renderMaster(); });
+$("pin-form").addEventListener("submit", function(e){
+  e.preventDefault();
+  var np = $("newpin").value.trim();
+  if(np.length<4){ masterMsg(t("pinShort"), true); return; }
+  store.setPin(pin, np).then(function(){ pin = np; $("newpin").value = ""; masterMsg(t("pinDone")); }).catch(function(err){ masterMsg(errText(err), true); });
+});
+function openEdit(r){
+  editing = r || null;
+  r = r || {nifco:"", cust:"", model:"", name:"", plant:""};
+  $("edit-title").textContent = t(editing ? "editTitle" : "addTitle");
+  $("f-nifco").value = r.nifco; $("f-cust").value = r.cust; $("f-model").value = r.model||""; $("f-name").value = r.name||"";
+  $("f-p1").checked = String(r.plant).indexOf("1")>=0; $("f-p2").checked = String(r.plant).indexOf("2")>=0;
+  $("edit-msg").textContent = "";
+  $("edit-form").hidden = false;
+  $("f-nifco").focus();
+}
+$("btn-add").addEventListener("click", function(){ openEdit(null); });
+$("edit-cancel").addEventListener("click", function(){ $("edit-form").hidden = true; });
+$("edit-form").addEventListener("submit", function(e){
+  e.preventDefault();
+  var r = {nifco:$("f-nifco").value.trim().toUpperCase(), cust:$("f-cust").value.trim().toUpperCase(), model:$("f-model").value.trim(), name:$("f-name").value.trim(),
+           plant:[$("f-p1").checked?"1":"", $("f-p2").checked?"2":""].filter(Boolean).join(",")};
+  if(!r.nifco || !r.cust){ $("edit-msg").textContent = t("errRequired"); return; }
+  var dup = master.find(function(x){ return key(x.nifco)===key(r.nifco) && key(x.cust)===key(r.cust); });
+  if(dup && (!editing || dup.id!==editing.id)){ $("edit-msg").textContent = t("errDup"); return; }
+  $("edit-msg").textContent = t("saving");
+  var job = editing ? store.update(pin, editing.id, r) : store.save(pin, [r], false);
+  job.then(function(){ $("edit-form").hidden = true; return reload(); }).catch(function(err){ $("edit-msg").textContent = errText(err); });
+});
+
+/* 엑셀 업로드 / 내려받기 */
+var HEAD = {
+  nifco:/nifco|내부|자사|사내|interno/i, cust:/고객|customer|cliente|mobis/i,
+  model:/차종|model|vehic|proyecto/i, name:/품명|name|desc|nombre/i, plant:/양산|공장|plant|planta|생산처/i
+};
+function plantOf(v){ var s = String(v==null?"":v), o = []; if(/1/.test(s)) o.push("1"); if(/2/.test(s)) o.push("2"); return o.join(","); }
+$("xlsx").addEventListener("change", function(){
+  var file = this.files && this.files[0]; this.value = "";
+  if(!file) return;
+  var rd = new FileReader();
+  rd.onload = function(){
+    var rows = [];
+    try{
+      var wb = XLSX.read(new Uint8Array(rd.result), {type:"array"});
+      rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, defval:"", raw:false});
+    }catch(err){ rows = []; }
+    var map = {nifco:0,cust:1,model:2,name:3,plant:4}, start = 0;
+    for(var i=0;i<Math.min(rows.length,10);i++){
+      var found = {};
+      rows[i].forEach(function(c,ci){ Object.keys(HEAD).forEach(function(k){ if(found[k]==null && HEAD[k].test(String(c))) found[k]=ci; }); });
+      if(found.nifco!=null && found.cust!=null && found.nifco!==found.cust){ map = Object.assign({model:-1,name:-1,plant:-1}, found); start = i+1; break; }
+    }
+    var list = [], skipped = 0, seen = {};
+    rows.slice(start).forEach(function(r){
+      var g = function(k){ return map[k]>=0 && r[map[k]]!=null ? String(r[map[k]]).trim() : ""; };
+      var rec = {nifco:g("nifco").toUpperCase(), cust:g("cust").toUpperCase(), model:g("model"), name:g("name"), plant:plantOf(g("plant"))};
+      if(!rec.nifco && !rec.cust && !rec.model && !rec.name) return;
+      if(!rec.nifco || !rec.cust){ skipped++; return; }
+      var kk = key(rec.nifco)+"|"+key(rec.cust); if(seen[kk]) return; seen[kk] = 1;
+      list.push(rec);
+    });
+    if(!list.length){ masterMsg(t("importNone"), true); $("import-bar").hidden = true; return; }
+    var nu = 0, up = 0;
+    list.forEach(function(r){ if(master.some(function(x){ return key(x.nifco)===key(r.nifco) && key(x.cust)===key(r.cust); })) up++; else nu++; });
+    pending = list; masterMsg("");
+    $("imode-merge").checked = true;
+    $("import-msg").textContent = file.name+" · "+list.length+" · "+t("importMsg")(nu,up,skipped);
+    $("import-bar").hidden = false;
+  };
+  rd.readAsArrayBuffer(file);
+});
+$("import-apply").addEventListener("click", function(){
+  if(!pending) return;
+  var btn = this; btn.disabled = true; masterMsg(t("saving"));
+  store.save(pin, pending, $("imode-replace").checked).then(function(){
+    pending = null; $("import-bar").hidden = true; return reload();
+  }).then(function(){ masterMsg(t("importDone")); })
+    .catch(function(err){ masterMsg(errText(err), true); })
+    .then(function(){ btn.disabled = false; });
+});
+$("import-cancel").addEventListener("click", function(){ pending = null; $("import-bar").hidden = true; });
+var XHEAD = ["내부품번","고객사품번","차종","품명","양산처"];
+function writeXlsx(rows, fname){
+  var ws = XLSX.utils.aoa_to_sheet([XHEAD].concat(rows));
+  ws["!cols"] = [{wch:16},{wch:16},{wch:12},{wch:30},{wch:8}];
+  var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "master");
+  XLSX.writeFile(wb, fname);
+}
+$("btn-template").addEventListener("click", function(){ writeXlsx([["BR02DA00104","865A7-R5JA0","차종","품명","2"]], "pn_master_template.xlsx"); });
+$("btn-export").addEventListener("click", function(){
+  writeXlsx(master.map(function(r){ return [r.nifco, r.cust, r.model, r.name, r.plant]; }), "pn_master_"+new Date().toISOString().slice(0,10)+".xlsx");
+});
+
+/* ---------- 공통 ---------- */
+function applyLang(){
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i]").forEach(function(el){ el.textContent = t(el.dataset.i); });
+  $("q").placeholder = t("placeholder"); $("mfilter").placeholder = t("filterPh");
+  $("pin").placeholder = t("pinPh"); $("newpin").placeholder = t("newPinPh");
+  $("lang-ko").classList.toggle("on", lang==="ko"); $("lang-es").classList.toggle("on", lang==="es");
+  renderSamples(); renderHistory(); renderMaster(); renderSync();
+  if(last!=null) renderResult(resolve(last));
+  ls("pnmatch.lang", lang);
+}
+$("lang-ko").addEventListener("click", function(){ lang="ko"; applyLang(); });
+$("lang-es").addEventListener("click", function(){ lang="es"; applyLang(); });
+$("btn-refresh").addEventListener("click", reload);
+function route(){
+  var m = location.hash==="#master";
+  $("view-master").hidden = !m; $("view-lookup").hidden = m;
+  $("tab-master").classList.toggle("on", m); $("tab-lookup").classList.toggle("on", !m);
+  if(m){ stopCam(); renderMaster(); } else { $("q").focus(); }
+}
+window.addEventListener("hashchange", route);
+var sl = ls("pnmatch.lang"); if(sl==="es"||sl==="ko") lang = sl;
+$("demo-banner").hidden = LIVE;
+// 저장된 마스터로 먼저 띄우고, 서버에서 최신 마스터를 받아 갱신
+if(LIVE){ try{ var c = JSON.parse(ls(CACHE)); if(Array.isArray(c)) master = c; }catch(e){} }
+renderLock(); applyLang(); route(); reload();
+</script>
+</body>
+</html>
